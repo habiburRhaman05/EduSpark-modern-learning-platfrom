@@ -1,1 +1,13 @@
-project_id = "fgaxwchpslnkblifcjgt"
+project_id = "zggzdxypuoknvundqmmx"
+
+[functions.create-meeting-room]
+verify_jwt = false
+
+[functions.get-meeting-token]
+verify_jwt = false
+
+[functions.end-meeting]
+verify_jwt = false
+
+[functions.ai-tutor-search]
+verify_jwt = false
