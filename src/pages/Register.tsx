@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { Logo } from "@/components/Logo";
 
 async function signUpWithGoogle() {
   const { error } = await supabase.auth.signInWithOAuth({
@@ -67,12 +68,7 @@ export default function Register() {
           transition={{ duration: 0.5 }}
           className="w-full max-w-md"
         >
-          <Link to="/" className="lg:hidden inline-flex items-center gap-2 mb-8">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-              <Sparkles className="w-4 h-4 text-primary-foreground" />
-            </div>
-            <span className="text-base font-black">EduSpark</span>
-          </Link>
+         
 
           <div className="rounded-3xl border border-border/60 bg-card/40 backdrop-blur-xl p-7 sm:p-9 shadow-2xl shadow-background/40">
             <h1 className="text-3xl font-black text-foreground tracking-tight">Create your account</h1>
@@ -216,13 +212,8 @@ export default function Register() {
           transition={{ duration: 0.6 }}
           className="relative z-10 max-w-md"
         >
-          <Link to="/" className="inline-flex items-center gap-2.5 mb-12 group">
-            <div className="relative w-11 h-11 rounded-2xl bg-gradient-to-br from-primary via-primary to-accent flex items-center justify-center shadow-xl shadow-primary/30 group-hover:scale-105 transition-transform">
-              <Sparkles className="w-5 h-5 text-primary-foreground" />
-              <div className="absolute inset-0 rounded-2xl ring-1 ring-white/30" />
-            </div>
-            <span className="text-lg font-black tracking-tight text-foreground">EduSpark</span>
-          </Link>
+                  <Logo size="lg" className="my-5"/>
+
 
           <h2 className="text-[42px] font-black text-foreground leading-[1.05] tracking-tight">
             Join the<br />learning revolution.

@@ -91,13 +91,8 @@ export default function Login() {
           transition={{ duration: 0.6 }}
           className="relative z-10 max-w-md"
         >
-          <Link to="/" className="inline-flex items-center gap-2.5 mb-12 group">
-            <div className="relative w-11 h-11 rounded-2xl bg-gradient-to-br from-primary via-primary to-accent flex items-center justify-center shadow-xl shadow-primary/30 group-hover:scale-105 transition-transform">
-              <Sparkles className="w-5 h-5 text-primary-foreground" />
-              <div className="absolute inset-0 rounded-2xl ring-1 ring-white/30" />
-            </div>
-            <span className="text-lg font-black tracking-tight text-foreground">EduSpark</span>
-          </Link>
+                          <Logo size="lg" className="my-5"/>
+        
 
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-[11px] font-semibold text-primary mb-5">
             <Star className="w-3 h-3 fill-current" /> Trusted by 50K+ learners
