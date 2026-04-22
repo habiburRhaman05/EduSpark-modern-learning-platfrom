@@ -1,0 +1,242 @@
+import { useState } from "react";
+import { Link, Navigate } from "react-router-dom";
+import { motion } from "framer-motion";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Mail, Lock, User, ArrowRight, Eye, EyeOff, Loader2, Sparkles, GraduationCap, Briefcase, CheckCircle2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
+
+const signupSchema = z.object({
+  name: z.string().trim().min(2, "Name must be at least 2 characters").max(80),
+  email: z.string().trim().min(1, "Email is required").email("Enter a valid email").max(255),
+  password: z.string().min(6, "Password must be at least 6 characters").max(100),
+});
+type SignupForm = z.infer<typeof signupSchema>;
+type SignupRole = "student" | "tutor";
+
+export default function Register() {
+  const [showPw, setShowPw] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<SignupRole>("student");
+  const { signUp, user } = useAuth();
+
+  const form = useForm<SignupForm>({
+    resolver: zodResolver(signupSchema),
+    defaultValues: { name: "", email: "", password: "" },
+  });
+
+  if (user) return <Navigate to="/dashboard" replace />;
+
+  const onSubmit = async (values: SignupForm) => {
+    const { error } = await signUp(values.email, values.password, values.name, selectedRole);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Welcome to EduSpark! Please check your email to verify.");
+  };
+
+  return (
+    <div className="min-h-screen grid lg:grid-cols-[1fr_1.05fr] bg-background relative overflow-hidden">
+      <div className="absolute -top-40 -right-40 w-[600px] h-[600px] rounded-full bg-primary/10 blur-[140px] pointer-events-none" />
+      <div className="absolute -bottom-40 -left-40 w-[600px] h-[600px] rounded-full bg-accent/10 blur-[140px] pointer-events-none" />
+
+      {/* ─── Left: Form ─── */}
+      <div className="flex items-center justify-center p-6 sm:p-12 relative order-2 lg:order-1">
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="w-full max-w-md"
+        >
+          <Link to="/" className="lg:hidden inline-flex items-center gap-2 mb-8">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center">
+              <Sparkles className="w-4 h-4 text-primary-foreground" />
+            </div>
+            <span className="text-base font-black">EduSpark</span>
+          </Link>
+
+          <div className="rounded-3xl border border-border/60 bg-card/40 backdrop-blur-xl p-7 sm:p-9 shadow-2xl shadow-background/40">
+            <h1 className="text-3xl font-black text-foreground tracking-tight">Create your account</h1>
+            <p className="text-muted-foreground mt-2 text-sm">Start your learning journey in under 60 seconds.</p>
+
+            {/* Role Selection */}
+            <div className="grid grid-cols-2 gap-2.5 mt-6">
+              {([
+                { value: "student" as const, label: "Student", desc: "Learn from experts", Icon: GraduationCap },
+                { value: "tutor" as const, label: "Tutor", desc: "Teach & earn", Icon: Briefcase },
+              ]).map((r) => {
+                const active = selectedRole === r.value;
+                return (
+                  <button
+                    key={r.value}
+                    type="button"
+                    onClick={() => setSelectedRole(r.value)}
+                    className={`relative p-3.5 rounded-2xl text-left transition-all border-2 group ${
+                      active
+                        ? "bg-primary/10 border-primary shadow-lg shadow-primary/20"
+                        : "bg-background/40 border-border/60 hover:border-primary/40"
+                    }`}
+                  >
+                    {active && (
+                      <CheckCircle2 className="absolute top-2 right-2 w-4 h-4 text-primary" />
+                    )}
+                    <r.Icon className={`w-5 h-5 mb-1.5 ${active ? "text-primary" : "text-muted-foreground"}`} />
+                    <p className={`font-bold text-sm ${active ? "text-foreground" : "text-foreground"}`}>{r.label}</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">{r.desc}</p>
+                  </button>
+                );
+              })}
+            </div>
+
+            <form onSubmit={form.handleSubmit(onSubmit)} className="mt-6 space-y-4">
+              <div>
+                <Label htmlFor="name" className="text-xs font-semibold text-foreground mb-1.5 block">Full name</Label>
+                <div className="relative group">
+                  <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                  <Input
+                    id="name"
+                    placeholder="Jane Doe"
+                    autoComplete="name"
+                    {...form.register("name")}
+                    className="pl-10 h-12 rounded-xl border-border/80 bg-background/60 focus-visible:ring-primary/30 focus-visible:border-primary"
+                  />
+                </div>
+                {form.formState.errors.name && <p className="text-xs text-destructive mt-1.5">{form.formState.errors.name.message}</p>}
+              </div>
+
+              <div>
+                <Label htmlFor="email" className="text-xs font-semibold text-foreground mb-1.5 block">Email address</Label>
+                <div className="relative group">
+                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="you@example.com"
+                    autoComplete="email"
+                    {...form.register("email")}
+                    className="pl-10 h-12 rounded-xl border-border/80 bg-background/60 focus-visible:ring-primary/30 focus-visible:border-primary"
+                  />
+                </div>
+                {form.formState.errors.email && <p className="text-xs text-destructive mt-1.5">{form.formState.errors.email.message}</p>}
+              </div>
+
+              <div>
+                <Label htmlFor="password" className="text-xs font-semibold text-foreground mb-1.5 block">Password</Label>
+                <div className="relative group">
+                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                  <Input
+                    id="password"
+                    type={showPw ? "text" : "password"}
+                    placeholder="At least 6 characters"
+                    autoComplete="new-password"
+                    {...form.register("password")}
+                    className="pl-10 pr-10 h-12 rounded-xl border-border/80 bg-background/60 focus-visible:ring-primary/30 focus-visible:border-primary"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPw(!showPw)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1"
+                  >
+                    {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                {form.formState.errors.password && <p className="text-xs text-destructive mt-1.5">{form.formState.errors.password.message}</p>}
+              </div>
+
+              <Button
+                type="submit"
+                disabled={form.formState.isSubmitting}
+                className="w-full h-12 rounded-xl bg-gradient-to-r from-primary to-accent hover:opacity-90 text-primary-foreground shadow-lg shadow-primary/30 mt-6 font-semibold"
+              >
+                {form.formState.isSubmitting ? (
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Creating account...</>
+                ) : (
+                  <>Create Account <ArrowRight className="w-4 h-4 ml-2" /></>
+                )}
+              </Button>
+            </form>
+
+            <p className="text-sm text-center text-muted-foreground mt-7">
+              Already have an account?{" "}
+              <Link to="/login" className="text-primary font-bold hover:underline">Sign in</Link>
+            </p>
+          </div>
+
+          <p className="text-[11px] text-center text-muted-foreground/70 mt-6 px-4">
+            By creating an account you agree to our{" "}
+            <Link to="/terms" className="underline hover:text-foreground">Terms</Link> and{" "}
+            <Link to="/terms" className="underline hover:text-foreground">Privacy Policy</Link>.
+          </p>
+        </motion.div>
+      </div>
+
+      {/* ─── Right: Branded panel ─── */}
+      <div className="hidden lg:flex relative items-center justify-center overflow-hidden p-12 order-1 lg:order-2">
+        <div className="absolute inset-0 bg-gradient-to-bl from-primary/[0.08] via-transparent to-accent/[0.06]" />
+        <div className="absolute inset-0 grid-bg opacity-30" />
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="relative z-10 max-w-md"
+        >
+          <Link to="/" className="inline-flex items-center gap-2.5 mb-12 group">
+            <div className="relative w-11 h-11 rounded-2xl bg-gradient-to-br from-primary via-primary to-accent flex items-center justify-center shadow-xl shadow-primary/30 group-hover:scale-105 transition-transform">
+              <Sparkles className="w-5 h-5 text-primary-foreground" />
+              <div className="absolute inset-0 rounded-2xl ring-1 ring-white/30" />
+            </div>
+            <span className="text-lg font-black tracking-tight text-foreground">EduSpark</span>
+          </Link>
+
+          <h2 className="text-[42px] font-black text-foreground leading-[1.05] tracking-tight">
+            Join the<br />learning revolution.
+          </h2>
+          <p className="text-muted-foreground mt-4 leading-relaxed text-[15px]">
+            Whether you want to master a new skill or share your expertise with others — EduSpark is built for you.
+          </p>
+
+          <div className="mt-10 grid grid-cols-3 gap-3">
+            {[
+              { value: "2.5K+", label: "Expert Tutors" },
+              { value: "200+", label: "Subjects" },
+              { value: "4.9★", label: "Avg Rating" },
+            ].map((s, i) => (
+              <motion.div
+                key={s.label}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 + i * 0.08 }}
+                className="rounded-2xl bg-card/50 border border-border/60 backdrop-blur-sm p-4"
+              >
+                <p className="text-2xl font-black text-foreground">{s.value}</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">{s.label}</p>
+              </motion.div>
+            ))}
+          </div>
+
+          <div className="mt-8 space-y-2.5">
+            {[
+              "Free to sign up — no credit card required",
+              "Browse 2,500+ verified expert tutors",
+              "Cancel or reschedule sessions anytime",
+            ].map((t, i) => (
+              <motion.div
+                key={t}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.4 + i * 0.08 }}
+                className="flex items-center gap-2.5"
+              >
+                <CheckCircle2 className="w-4 h-4 text-success flex-shrink-0" />
+                <span className="text-sm text-foreground">{t}</span>
+              </motion.div>
+            ))}
+          </div>
+        </motion.div>
+      </div>
+    </div>
+  );
+}

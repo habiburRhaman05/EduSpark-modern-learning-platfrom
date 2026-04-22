@@ -6,10 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "lint": "eslint .",
-    "preview": "vite preview",
-    "test": "vitest run",
-    "test:watch": "vitest"
+    "lint": "eslint ."
   },
   "dependencies": {
     "@daily-co/daily-js": "^0.89.1",
