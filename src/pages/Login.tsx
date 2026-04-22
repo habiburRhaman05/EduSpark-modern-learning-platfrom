@@ -12,6 +12,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { AppLoader } from "@/components/AppLoader";
 import { supabase } from "@/integrations/supabase/client";
+import { Logo } from "@/components/Logo";
 
 async function signInWithGoogle() {
   const { error } = await supabase.auth.signInWithOAuth({
