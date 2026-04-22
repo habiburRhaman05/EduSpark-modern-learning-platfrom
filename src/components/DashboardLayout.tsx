@@ -18,6 +18,7 @@ import { NotificationBell } from "@/components/NotificationBell";
 import { useAuth } from "@/contexts/AuthContext";
 import { GlobalSearch } from "@/components/dashboard/GlobalSearch";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Logo, LogoMark } from "./Logo";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -95,26 +96,8 @@ export function DashboardLayout({ children, title, subtitle, navItems }: Dashboa
 
         {/* Logo */}
         <div className={`relative h-16 flex items-center border-b border-border/60 ${collapsed ? "justify-center px-2" : "px-4"}`}>
-          <Link to="/" className="flex items-center gap-2.5 overflow-hidden group min-w-0">
-            <div className="relative w-10 h-10 rounded-xl bg-gradient-to-br from-primary via-primary to-accent flex items-center justify-center shadow-lg shadow-primary/30 group-hover:shadow-primary/50 group-hover:scale-105 transition-all flex-shrink-0">
-              <Sparkles className="w-5 h-5 text-primary-foreground" />
-              <div className="absolute inset-0 rounded-xl ring-1 ring-white/30" />
-            </div>
-            <AnimatePresence initial={false}>
-              {!collapsed && (
-                <motion.div
-                  initial={{ opacity: 0, width: 0 }}
-                  animate={{ opacity: 1, width: "auto" }}
-                  exit={{ opacity: 0, width: 0 }}
-                  transition={{ duration: 0.18 }}
-                  className="flex flex-col leading-none overflow-hidden whitespace-nowrap"
-                >
-                  <span className="text-sm font-black tracking-tight text-foreground">EduSpark</span>
-                  <span className="text-[10px] text-muted-foreground capitalize mt-0.5">{displayRole} Suite</span>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </Link>
+        {!collapsed && <Logo size="md"/>}
+        {collapsed && <LogoMark/>}
         </div>
 
         {/* Floating rail toggle */}
@@ -243,35 +226,7 @@ export function DashboardLayout({ children, title, subtitle, navItems }: Dashboa
           })}
         </nav>
 
-        {/* Upgrade card */}
-        <AnimatePresence initial={false}>
-          {!collapsed && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.2 }}
-              className="overflow-hidden"
-            >
-              <div className="relative mx-3 mb-3 p-3.5 rounded-2xl bg-gradient-to-br from-primary/15 via-primary/5 to-accent/10 border border-primary/20 overflow-hidden">
-                <div className="absolute -top-6 -right-6 w-20 h-20 rounded-full bg-primary/20 blur-2xl" />
-                <div className="relative">
-                  <div className="w-7 h-7 rounded-lg bg-primary/20 border border-primary/30 flex items-center justify-center mb-2">
-                    <Sparkles className="w-3.5 h-3.5 text-primary" />
-                  </div>
-                  <p className="text-xs font-black text-foreground">Upgrade to Pro</p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
-                    Unlock advanced analytics & priority support.
-                  </p>
-                  <button className="mt-2.5 w-full text-[11px] font-bold text-primary-foreground bg-gradient-to-r from-primary to-accent hover:opacity-90 rounded-lg py-1.5 transition-opacity">
-                    Get Pro
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
+   
         {/* Profile footer */}
         <div className={`relative border-t border-border/60 ${collapsed ? "p-2 flex justify-center" : "p-2.5"}`}>
           {collapsed ? (
@@ -380,23 +335,13 @@ export function DashboardLayout({ children, title, subtitle, navItems }: Dashboa
             <p className="text-[11px] text-muted-foreground mt-0.5">{subtitle}</p>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setSearchOpen(true)}
-              className="hidden md:inline-flex items-center gap-2 h-9 px-3 rounded-xl bg-muted/40 hover:bg-muted/70 border border-border/60 text-[12px] text-muted-foreground hover:text-foreground transition-colors"
-              aria-label="Open search"
-            >
-              <Search className="w-3.5 h-3.5" />
-              <span>Search</span>
-              <kbd className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-background border border-border text-[9px] font-mono">
-                <CommandIcon className="w-2.5 h-2.5" />K
-              </kbd>
-            </button>
+           
             <ThemeToggle />
             <NotificationBell />
           </div>
         </header>
 
-        <main className="p-6">
+        <main className="py-6 px-10">
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}>
             {children}
           </motion.div>
