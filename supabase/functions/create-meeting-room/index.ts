@@ -1,5 +1,6 @@
 // Creates a Daily.co room for a confirmed booking and saves URL on bookings row.
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+// Redeploy marker: 2026-04-22T01:30Z
+import { createClient } from "npm:@supabase/supabase-js@2.49.8";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -11,33 +12,42 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
+    const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
+      status,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+
     const DAILY_API_KEY = Deno.env.get("DAILY_API_KEY");
     if (!DAILY_API_KEY) throw new Error("DAILY_API_KEY missing");
 
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return json({ error: "Unauthorized" }, 401);
     }
+
+    const accessToken = authHeader.replace("Bearer ", "");
+
+    let body: { bookingId?: string } | null = null;
+    try {
+      body = await req.json();
+    } catch {
+      return json({ error: "Invalid request body" }, 400);
+    }
+
+    const bookingId = body?.bookingId?.trim();
+    if (!bookingId) return json({ error: "bookingId required" }, 400);
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_ANON_KEY")!,
       { global: { headers: { Authorization: authHeader } } },
     );
-    const { data: claims, error: claimsErr } = await supabase.auth.getClaims(
-      authHeader.replace("Bearer ", ""),
-    );
-    if (claimsErr || !claims?.claims) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    const { data: userData, error: userError } = await supabase.auth.getUser(accessToken);
+    const userId = userData.user?.id;
+    if (userError || !userId) {
+      console.error("create-meeting-room auth error:", userError?.message || "missing user");
+      return json({ error: "Unauthorized" }, 401);
     }
-    const userId = claims.claims.sub;
-
-    const { bookingId } = await req.json();
-    if (!bookingId) throw new Error("bookingId required");
 
     // Use service role to bypass RLS for trusted update after auth check
     const admin = createClient(
@@ -53,21 +63,19 @@ Deno.serve(async (req) => {
     if (bErr || !booking) throw new Error("Booking not found");
 
     if (booking.student_id !== userId && booking.tutor_id !== userId) {
-      return new Response(JSON.stringify({ error: "Forbidden" }), {
-        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return json({ error: "Forbidden" }, 403);
     }
 
     // Already created — return existing
     if (booking.meeting_room_url) {
-      return new Response(JSON.stringify({ url: booking.meeting_room_url, name: booking.meeting_room_name }), {
-        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return json({ url: booking.meeting_room_url, name: booking.meeting_room_name });
     }
 
+    const now = Date.now();
     const start = new Date(booking.scheduled_at).getTime();
     const end = start + (booking.duration_minutes || 60) * 60 * 1000;
-    const expSec = Math.floor(end / 1000) + 30 * 60; // expire 30 min after end
+    // Clamp expiry to at least now + 90 min so backdated test bookings don't 400
+    const expSec = Math.max(Math.floor(end / 1000) + 30 * 60, Math.floor(now / 1000) + 90 * 60);
 
     const roomName = `eduspark-${bookingId.slice(0, 8)}-${Date.now().toString(36)}`;
 
@@ -101,9 +109,7 @@ Deno.serve(async (req) => {
       call_status: "not_started",
     }).eq("id", bookingId);
 
-    return new Response(JSON.stringify({ url: dailyData.url, name: dailyData.name }), {
-      status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return json({ url: dailyData.url, name: dailyData.name });
   } catch (e) {
     console.error("create-meeting-room error:", e);
     return new Response(JSON.stringify({ error: (e as Error).message }), {

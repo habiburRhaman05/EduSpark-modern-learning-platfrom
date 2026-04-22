@@ -1,5 +1,5 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 interface PaginationProps {
   page: number;
@@ -7,10 +7,11 @@ interface PaginationProps {
   onPageChange: (page: number) => void;
   total?: number;
   perPage?: number;
+  className?: string;
 }
 
-export function Pagination({ page, totalPages, onPageChange, total, perPage }: PaginationProps) {
-  if (totalPages <= 1) return null;
+export function Pagination({ page, totalPages, onPageChange, total, perPage, className }: PaginationProps) {
+  if (totalPages <= 1 && !total) return null;
 
   const getVisiblePages = () => {
     const pages: (number | "...")[] = [];
@@ -28,36 +29,87 @@ export function Pagination({ page, totalPages, onPageChange, total, perPage }: P
     return pages;
   };
 
+  const showingFrom = total && perPage ? Math.min((page - 1) * perPage + 1, total) : 0;
+  const showingTo = total && perPage ? Math.min(page * perPage, total) : 0;
+
   return (
-    <div className="flex items-center justify-between mt-6">
-      {total != null && perPage != null && (
-        <p className="text-xs text-muted-foreground hidden sm:block">
-          Showing {Math.min((page - 1) * perPage + 1, total)}–{Math.min(page * perPage, total)} of {total}
-        </p>
+    <nav
+      aria-label="Pagination"
+      className={cn(
+        "mt-6 flex flex-col sm:flex-row items-center justify-between gap-3",
+        "rounded-2xl border border-border bg-card/60 backdrop-blur-sm shadow-sm px-3 py-2",
+        className
       )}
-      <div className="flex items-center gap-1 ml-auto">
-        <Button variant="outline" size="sm" disabled={page === 1} onClick={() => onPageChange(page - 1)} className="border-border rounded-xl h-8 w-8 p-0">
-          <ChevronLeft className="w-4 h-4" />
-        </Button>
+    >
+      {/* Prev */}
+      <button
+        type="button"
+        onClick={() => onPageChange(page - 1)}
+        disabled={page === 1}
+        aria-label="Previous page"
+        className={cn(
+          "inline-flex items-center gap-1.5 px-3 h-9 rounded-xl text-sm font-medium transition-colors",
+          "text-foreground hover:bg-muted",
+          "disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+        )}
+      >
+        <ChevronLeft className="w-4 h-4" />
+        <span className="hidden sm:inline">Previous</span>
+      </button>
+
+      {/* Page numbers */}
+      <ul className="flex items-center gap-1 order-first sm:order-none">
         {getVisiblePages().map((p, i) =>
           p === "..." ? (
-            <span key={`dots-${i}`} className="px-2 text-xs text-muted-foreground">…</span>
+            <li key={`dots-${i}`} aria-hidden className="px-1.5 text-sm text-muted-foreground select-none">
+              …
+            </li>
           ) : (
-            <Button
-              key={p}
-              variant={page === p ? "default" : "outline"}
-              size="sm"
-              onClick={() => onPageChange(p as number)}
-              className={`rounded-xl h-8 w-8 p-0 text-xs ${page === p ? "bg-primary" : "border-border"}`}
-            >
-              {p}
-            </Button>
+            <li key={p}>
+              <button
+                type="button"
+                onClick={() => onPageChange(p as number)}
+                aria-current={page === p ? "page" : undefined}
+                aria-label={`Go to page ${p}`}
+                className={cn(
+                  "inline-flex items-center justify-center min-w-9 h-9 px-3 rounded-full text-sm font-medium transition-all",
+                  page === p
+                    ? "bg-primary text-primary-foreground ring-4 ring-primary/15 shadow-sm"
+                    : "text-foreground hover:bg-muted"
+                )}
+              >
+                {p}
+              </button>
+            </li>
           )
         )}
-        <Button variant="outline" size="sm" disabled={page === totalPages} onClick={() => onPageChange(page + 1)} className="border-border rounded-xl h-8 w-8 p-0">
+      </ul>
+
+      {/* Next + showing */}
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={() => onPageChange(page + 1)}
+          disabled={page === totalPages}
+          aria-label="Next page"
+          className={cn(
+            "inline-flex items-center gap-1.5 px-3 h-9 rounded-xl text-sm font-medium transition-colors",
+            "text-foreground hover:bg-muted",
+            "disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+          )}
+        >
+          <span className="hidden sm:inline">Next</span>
           <ChevronRight className="w-4 h-4" />
-        </Button>
+        </button>
+
+        {total != null && perPage != null && (
+          <p className="hidden md:block text-xs text-muted-foreground whitespace-nowrap pl-3 border-l border-border">
+            Showing <span className="font-semibold text-foreground">{showingFrom}</span>–
+            <span className="font-semibold text-foreground">{showingTo}</span> of{" "}
+            <span className="font-semibold text-foreground">{total.toLocaleString()}</span>
+          </p>
+        )}
       </div>
-    </div>
+    </nav>
   );
 }

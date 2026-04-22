@@ -9,7 +9,7 @@ export interface MeetingTokenResult {
 
 export interface MeetingTokenError {
   error: string;
-  reason?: "too_early" | "expired" | "cancelled";
+  reason?: "too_early" | "expired" | "cancelled" | "awaiting_payment";
   startsAt?: string;
   joinAt?: string;
 }

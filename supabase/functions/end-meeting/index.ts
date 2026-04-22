@@ -1,5 +1,6 @@
 // Records call end + auto-completes booking + credits tutor when applicable.
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+// Redeploy marker: 2026-04-22T01:30Z
+import { createClient } from "npm:@supabase/supabase-js@2.49.8";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

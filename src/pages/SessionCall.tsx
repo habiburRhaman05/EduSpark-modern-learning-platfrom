@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -20,38 +20,49 @@ export default function SessionCall() {
 
   const [tokenData, setTokenData] = useState<{ token: string; url: string } | null>(null);
   const [errorState, setErrorState] = useState<MeetingTokenError | null>(null);
+  const hasAttemptedRef = useRef(false);
 
   const tutorName = (booking as any)?.tutor?.full_name as string | undefined;
 
-  // Auto-attempt token on load and when join window opens
+  // Auto-attempt token on load — runs exactly once per booking id
   useEffect(() => {
     if (!booking || tokenData) return;
+    if (hasAttemptedRef.current) return;
+    hasAttemptedRef.current = true;
+
     let cancelled = false;
     (async () => {
       try {
-        // Auto-provision room if missing (legacy bookings)
+        // Auto-provision room if missing (legacy bookings or failed booking-time provision)
         if (!(booking as any).meeting_room_name) {
           try {
             await createRoom.mutateAsync(booking.id);
             await refetch();
           } catch (provisionErr: any) {
-            if (!cancelled) setErrorState({ error: provisionErr?.message || "Failed to provision meeting room" });
+            const msg = provisionErr?.message || "Failed to provision meeting room. Please contact support.";
+            if (!cancelled) setErrorState({ error: msg });
             return;
           }
         }
         const res = await getToken.mutateAsync(booking.id);
         if (!cancelled) setTokenData({ token: res.token, url: res.url });
       } catch (e: any) {
-        if (!cancelled) {
-          // Normalize FunctionsFetchError / network failures
-          const msg = e?.error || e?.message || "Failed to reach meeting service";
-          setErrorState({ ...(e || {}), error: msg });
+        if (cancelled) return;
+        // Differentiate FunctionsFetchError (network/CORS/not deployed) vs structured rejection
+        const isStructured = e && typeof e === "object" && "error" in e && typeof e.error === "string";
+        if (isStructured) {
+          setErrorState(e as MeetingTokenError);
+        } else {
+          const msg = e?.message?.includes("Failed to send")
+            ? "Could not reach the meeting service. Please check your connection and try again."
+            : (e?.message || "Failed to reach meeting service");
+          setErrorState({ error: msg });
         }
       }
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [booking?.id, (booking as any)?.meeting_room_name]);
+  }, [booking?.id]);
 
 
   const joinAt = useMemo(() => {
@@ -71,11 +82,18 @@ export default function SessionCall() {
 
   const handleRetry = async () => {
     setErrorState(null);
+    hasAttemptedRef.current = false;
     try {
+      // Re-provision if needed
+      if (booking && !(booking as any).meeting_room_name) {
+        await createRoom.mutateAsync(id);
+        await refetch();
+      }
       const res = await getToken.mutateAsync(id);
       setTokenData({ token: res.token, url: res.url });
-    } catch (e) {
-      setErrorState(e as MeetingTokenError);
+    } catch (e: any) {
+      const isStructured = e && typeof e === "object" && "error" in e;
+      setErrorState(isStructured ? (e as MeetingTokenError) : { error: e?.message || "Failed to reach meeting service" });
     }
   };
 
@@ -93,7 +111,19 @@ export default function SessionCall() {
 
   // In a call
   if (tokenData) {
-    return <VideoCallRoom url={tokenData.url} token={tokenData.token} bookingId={id} onLeave={handleLeave} />;
+    return (
+      <VideoCallRoom
+        url={tokenData.url}
+        token={tokenData.token}
+        bookingId={id}
+        onLeave={handleLeave}
+        onError={(msg) => {
+          // If Daily itself rejects, surface as an error screen on next render
+          setTokenData(null);
+          setErrorState({ error: msg });
+        }}
+      />
+    );
   }
 
   // Waiting (too early)
@@ -109,14 +139,21 @@ export default function SessionCall() {
     );
   }
 
-  // Expired / cancelled / other
+  // Specific reasons → friendly messages
   if (errorState) {
-    const msg = errorState.reason === "expired"
-      ? "This session has ended."
-      : errorState.reason === "cancelled"
-      ? "This session was cancelled."
+    const msg =
+      errorState.reason === "expired" ? "This session has ended."
+      : errorState.reason === "cancelled" ? "This session was cancelled."
+      : errorState.reason === "awaiting_payment" ? "This session is awaiting payment confirmation. Once payment is confirmed, you'll be able to join."
       : errorState.error || "Unable to join this session.";
-    return <ErrorScreen title="Cannot join" message={msg} onBack={() => navigate(`/dashboard/sessions/${id}`)} />;
+    return (
+      <ErrorScreen
+        title="Cannot join"
+        message={msg}
+        onBack={() => navigate(`/dashboard/sessions/${id}`)}
+        onRetry={errorState.reason === "awaiting_payment" ? undefined : handleRetry}
+      />
+    );
   }
 
   // Loading token
@@ -130,7 +167,7 @@ export default function SessionCall() {
   );
 }
 
-function ErrorScreen({ title, message, onBack }: { title: string; message: string; onBack: () => void }) {
+function ErrorScreen({ title, message, onBack, onRetry }: { title: string; message: string; onBack: () => void; onRetry?: () => void }) {
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="max-w-md text-center space-y-4">
@@ -139,9 +176,12 @@ function ErrorScreen({ title, message, onBack }: { title: string; message: strin
         </div>
         <h1 className="text-2xl font-bold text-foreground">{title}</h1>
         <p className="text-muted-foreground">{message}</p>
-        <Button onClick={onBack} variant="outline" className="gap-2">
-          <ArrowLeft className="w-4 h-4" /> Back
-        </Button>
+        <div className="flex items-center justify-center gap-2">
+          <Button onClick={onBack} variant="outline" className="gap-2">
+            <ArrowLeft className="w-4 h-4" /> Back
+          </Button>
+          {onRetry && <Button onClick={onRetry}>Try again</Button>}
+        </div>
       </div>
     </div>
   );

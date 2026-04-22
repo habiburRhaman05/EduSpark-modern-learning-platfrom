@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import {
   DailyProvider,
   useDaily,
@@ -11,7 +11,7 @@ import {
   useNetwork,
 } from "@daily-co/daily-react";
 import DailyIframe, { DailyCall } from "@daily-co/daily-js";
-import { Mic, MicOff, Video, VideoOff, PhoneOff, Monitor, MonitorOff, Users, Wifi } from "lucide-react";
+import { Mic, MicOff, Video, VideoOff, PhoneOff, Monitor, MonitorOff, Users, Wifi, AlertCircle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface Props {
@@ -19,32 +19,86 @@ interface Props {
   token: string;
   bookingId: string;
   onLeave: (durationSec: number) => void;
+  onError?: (message: string) => void;
 }
 
 /** Top-level wrapper that owns the Daily call object lifecycle. */
 export function VideoCallRoom(props: Props) {
   const [call, setCall] = useState<DailyCall | null>(null);
+  const [joinError, setJoinError] = useState<string | null>(null);
+  const [joining, setJoining] = useState(true);
 
   useEffect(() => {
-    const c = DailyIframe.createCallObject({
-      audioSource: true,
-      videoSource: true,
-      dailyConfig: { useDevicePreferenceCookies: true },
-    });
+    let cancelled = false;
+    let c: DailyCall | null = null;
+    setJoinError(null);
+    setJoining(true);
+
+    try {
+      c = DailyIframe.createCallObject({
+        audioSource: true,
+        videoSource: true,
+        dailyConfig: { useDevicePreferenceCookies: true },
+      });
+    } catch (e: any) {
+      const msg = e?.message || "Failed to initialize call object";
+      setJoinError(msg);
+      props.onError?.(msg);
+      setJoining(false);
+      return;
+    }
+
     setCall(c);
-    c.join({ url: props.url, token: props.token }).catch((e) => console.error("join error", e));
+
+    c.join({ url: props.url, token: props.token })
+      .then(() => { if (!cancelled) setJoining(false); })
+      .catch((e) => {
+        const msg = e?.errorMsg || e?.message || "Failed to join the call";
+        console.error("Daily join error:", e);
+        if (!cancelled) {
+          setJoinError(msg);
+          setJoining(false);
+          props.onError?.(msg);
+        }
+      });
+
     return () => {
-      c.leave().catch(() => null);
-      c.destroy().catch(() => null);
+      cancelled = true;
+      const cc = c;
+      if (cc) {
+        cc.leave().catch(() => null).finally(() => {
+          cc.destroy().catch(() => null);
+        });
+      }
       setCall(null);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.url, props.token]);
 
-  if (!call) {
+  if (joinError) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center text-muted-foreground">
-        Connecting...
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="max-w-md text-center space-y-4">
+          <div className="w-16 h-16 rounded-full bg-destructive/10 text-destructive flex items-center justify-center mx-auto">
+            <AlertCircle className="w-8 h-8" />
+          </div>
+          <h1 className="text-xl font-bold text-foreground">Couldn't join the call</h1>
+          <p className="text-muted-foreground text-sm">{joinError}</p>
+          <Button onClick={() => window.location.reload()} className="gap-2">
+            <RefreshCw className="w-4 h-4" /> Try again
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!call || joining) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center space-y-3">
+          <div className="w-12 h-12 rounded-full border-2 border-primary border-t-transparent animate-spin mx-auto" />
+          <p className="text-muted-foreground text-sm">Connecting to the room…</p>
+        </div>
       </div>
     );
   }
@@ -66,10 +120,13 @@ function CallUI({ bookingId, onLeave }: { bookingId: string; onLeave: (s: number
   const [camOn, setCamOn] = useState(true);
   const [screenOn, setScreenOn] = useState(false);
   const network = useNetwork();
+  const hasLeftRef = useRef(false);
 
-  useDailyEvent("error", (e) => console.error("Daily error:", e));
+  useDailyEvent("error", (e: any) => console.error("Daily error:", e));
 
   const handleLeave = useCallback(() => {
+    if (hasLeftRef.current) return;
+    hasLeftRef.current = true;
     const dur = Math.floor((Date.now() - startedAt) / 1000);
     onLeave(dur);
   }, [startedAt, onLeave]);
@@ -107,7 +164,7 @@ function CallUI({ bookingId, onLeave }: { bookingId: string; onLeave: (s: number
         </div>
         <div className="flex items-center gap-4 text-xs text-white/60">
           <span className="flex items-center gap-1.5"><Users className="w-3.5 h-3.5" />{ids.length}</span>
-          <NetworkPill quality={network.quality} threshold={network.threshold} />
+          <NetworkPill quality={network?.quality} threshold={network?.threshold} />
           <CallTimer startedAt={startedAt} />
         </div>
       </div>
@@ -222,11 +279,18 @@ function CallTimer({ startedAt }: { startedAt: number }) {
   return <span className="tabular-nums">{String(m).padStart(2, "0")}:{String(s % 60).padStart(2, "0")}</span>;
 }
 
-function NetworkPill({ quality, threshold }: { quality: number; threshold: string }) {
+function NetworkPill({ quality, threshold }: { quality?: number; threshold?: string }) {
+  if (quality === undefined || quality === null || Number.isNaN(quality)) {
+    return (
+      <span className="flex items-center gap-1 text-white/40">
+        <Wifi className="w-3.5 h-3.5" /> —
+      </span>
+    );
+  }
   const color = threshold === "good" ? "text-green-400" : threshold === "low" ? "text-yellow-400" : "text-red-400";
   return (
     <span className={`flex items-center gap-1 ${color}`}>
-      <Wifi className="w-3.5 h-3.5" /> {quality}%
+      <Wifi className="w-3.5 h-3.5" /> {Math.round(quality)}%
     </span>
   );
 }

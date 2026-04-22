@@ -18,6 +18,7 @@ import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import TutorListing from "./pages/TutorListing";
 import TutorDetails from "./pages/TutorDetails";
+import { AppLoader } from "./components/AppLoader";
 
 // Lazy-loaded — heavy dashboards & secondary pages
 const StudentPreferences = lazy(() => import("./pages/StudentPreferences"));
@@ -57,7 +58,7 @@ const App = () => (
             <Suspense fallback={<PageFallback />}>
               <Routes>
                 {/* Public routes */}
-                <Route path="/" element={<Index />} />
+                <Route path="/" element={<AppLoader />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />

@@ -13,15 +13,9 @@ export function AppLoader({ message = "Loading your dashboard..." }: { message?:
         className="relative z-10 flex flex-col items-center gap-6"
       >
         <div className="relative">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary via-primary to-accent flex items-center justify-center shadow-2xl shadow-primary/40">
-            <Sparkles className="w-7 h-7 text-primary-foreground" />
+           <img  className="w-[100px]" src="/public/main-logo.png" alt="" />
             <div className="absolute inset-0 rounded-2xl ring-1 ring-white/30" />
-          </div>
-          <motion.div
-            className="absolute -inset-2 rounded-2xl border-2 border-primary/40"
-            animate={{ scale: [1, 1.18, 1], opacity: [0.6, 0, 0.6] }}
-            transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
-          />
+        
         </div>
         <div className="text-center">
           <p className="text-base font-black tracking-tight text-foreground">EduSpark</p>
