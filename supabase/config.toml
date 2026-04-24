@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.ai-tutor-search]
 verify_jwt = false
+
+[functions.set-initial-role]
+verify_jwt = true
