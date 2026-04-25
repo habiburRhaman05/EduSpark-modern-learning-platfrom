@@ -4,10 +4,30 @@ import { motion } from "framer-motion";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Mail, Lock, ArrowRight, Eye, EyeOff, Loader2, ShieldCheck, Sparkles, Zap, Star } from "lucide-react";
+import {
+  Mail,
+  Lock,
+  ArrowRight,
+  Eye,
+  EyeOff,
+  Loader2,
+  ShieldCheck,
+  Sparkles,
+  Zap,
+  Star,
+  ChevronDown,
+  LogIn,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { AppLoader } from "@/components/AppLoader";
@@ -25,7 +45,10 @@ async function signInWithGoogle() {
 function GoogleIcon() {
   return (
     <svg className="w-4 h-4" viewBox="0 0 24 24" aria-hidden="true">
-      <path fill="#EA4335" d="M12 10.2v3.9h5.5c-.24 1.4-1.7 4.1-5.5 4.1-3.3 0-6-2.7-6-6.1s2.7-6.1 6-6.1c1.9 0 3.1.8 3.9 1.5l2.7-2.6C16.9 3.3 14.7 2.4 12 2.4 6.7 2.4 2.4 6.7 2.4 12s4.3 9.6 9.6 9.6c5.5 0 9.2-3.9 9.2-9.4 0-.6-.1-1.1-.2-1.6H12z"/>
+      <path
+        fill="#EA4335"
+        d="M12 10.2v3.9h5.5c-.24 1.4-1.7 4.1-5.5 4.1-3.3 0-6-2.7-6-6.1s2.7-6.1 6-6.1c1.9 0 3.1.8 3.9 1.5l2.7-2.6C16.9 3.3 14.7 2.4 12 2.4 6.7 2.4 2.4 6.7 2.4 12s4.3 9.6 9.6 9.6c5.5 0 9.2-3.9 9.2-9.4 0-.6-.1-1.1-.2-1.6H12z"
+      />
     </svg>
   );
 }
@@ -36,9 +59,33 @@ const loginSchema = z.object({
 });
 type LoginForm = z.infer<typeof loginSchema>;
 
+const DEMO_USERS = {
+  demo: {
+    label: "Demo User",
+    email: import.meta.env.VITE_APP_DEMO_USER_EMAIL,
+    password: import.meta.env.VITE_APP_DEMO_USER_PASSWORD,
+    role: "student",
+  },
+  tutor: {
+    label: "Tutor",
+    email: import.meta.env.VITE_TUTOR_EMAIL,
+    password: import.meta.env.VITE_TUTOR_PASSWORD,
+    role: "tutor",
+  },
+  admin: {
+    label: "Admin",
+    email: import.meta.env.VITE_ADMIN_EMAIL,
+    password: import.meta.env.VITE_ADMIN_PASSWORD,
+    role: "admin",
+  },
+} as const;
+
+type DemoKey = keyof typeof DEMO_USERS;
+
 export default function Login() {
   const [showPw, setShowPw] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
+  const [demoRole, setDemoRole] = useState<DemoKey | "">("");
   const { signIn, user, role, loading } = useAuth();
   const location = useLocation();
   const from = (location.state as any)?.from?.pathname || null;
@@ -47,6 +94,39 @@ export default function Login() {
     resolver: zodResolver(loginSchema),
     defaultValues: { email: "", password: "" },
   });
+
+  const fillDemoCredentials = (key: DemoKey) => {
+    const userData = DEMO_USERS[key];
+    setDemoRole(key);
+    form.setValue("email", userData.email || "");
+    form.setValue("password", userData.password || "");
+    toast.success(`${userData.label} credentials loaded`);
+  };
+
+  const handleDemoLogin = async () => {
+    if (!demoRole) {
+      toast.error("Please select a demo account first");
+      return;
+    }
+
+    const userData = DEMO_USERS[demoRole];
+    if (!userData.email || !userData.password) {
+      toast.error("Demo credentials are missing in environment variables");
+      return;
+    }
+
+    const { error } = await signIn(userData.email, userData.password);
+    if (error) {
+      toast.error(error.message || "Demo login failed");
+      return;
+    }
+
+    toast.success(`Welcome back, ${userData.label}!`);
+    setRedirecting(true);
+    setTimeout(() => {
+      window.location.href = from || "/dashboard";
+    }, 800);
+  };
 
   if (user && !redirecting) {
     const dest = from || (
@@ -77,11 +157,9 @@ export default function Login() {
 
   return (
     <div className="min-h-screen grid lg:grid-cols-[1.05fr_1fr] bg-background relative overflow-hidden">
-      {/* Background ambient glow */}
       <div className="absolute -top-40 -left-40 w-[600px] h-[600px] rounded-full bg-primary/10 blur-[140px] pointer-events-none" />
       <div className="absolute -bottom-40 -right-40 w-[600px] h-[600px] rounded-full bg-accent/10 blur-[140px] pointer-events-none" />
 
-      {/* ─── Left: Branded panel ─── */}
       <div className="hidden lg:flex relative items-center justify-center overflow-hidden p-12">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.08] via-transparent to-accent/[0.06]" />
         <div className="absolute inset-0 grid-bg opacity-30" />
@@ -92,8 +170,7 @@ export default function Login() {
           transition={{ duration: 0.6 }}
           className="relative z-10 max-w-md"
         >
-                          <Logo size="lg" className="my-5"/>
-        
+          <Logo size="lg" className="my-5" />
 
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-[11px] font-semibold text-primary mb-5">
             <Star className="w-3 h-3 fill-current" /> Trusted by 50K+ learners
@@ -151,7 +228,6 @@ export default function Login() {
         </motion.div>
       </div>
 
-      {/* ─── Right: Form ─── */}
       <div className="flex items-center justify-center p-6 sm:p-12 relative">
         <motion.div
           initial={{ opacity: 0, y: 16 }}
@@ -170,9 +246,60 @@ export default function Login() {
             <h1 className="text-3xl font-black text-foreground tracking-tight">Welcome back</h1>
             <p className="text-muted-foreground mt-2 text-sm">Sign in to continue your learning journey.</p>
 
-            <form onSubmit={form.handleSubmit(onSubmit)} className="mt-7 space-y-4">
+            <div className="mt-6 rounded-2xl border border-dashed border-border/70 bg-background/30 p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <LogIn className="w-4 h-4 text-primary" />
+                <p className="text-sm font-semibold text-foreground">Demo login</p>
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <Label className="text-xs font-semibold text-foreground mb-1.5 block">
+                    Select demo account
+                  </Label>
+                  <Select value={demoRole} onValueChange={(value) => fillDemoCredentials(value as DemoKey)}>
+                    <SelectTrigger className="h-12 rounded-xl border-border/80 bg-background/60">
+                      <SelectValue placeholder="Choose a demo account" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="demo">Demo User</SelectItem>
+                      <SelectItem value="tutor">Tutor</SelectItem>
+                      <SelectItem value="admin">Admin</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="rounded-xl border border-border/60 bg-background/50 px-3 py-2">
+                    <p className="text-[11px] text-muted-foreground">Email</p>
+                    <p className="text-xs font-medium truncate">
+                      {demoRole ? DEMO_USERS[demoRole].email : "Not selected"}
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-border/60 bg-background/50 px-3 py-2">
+                    <p className="text-[11px] text-muted-foreground">Role</p>
+                    <p className="text-xs font-medium capitalize">
+                      {demoRole || "—"}
+                    </p>
+                  </div>
+                </div>
+
+                <Button
+                  type="button"
+                  onClick={handleDemoLogin}
+                  className="w-full h-11 rounded-xl bg-primary hover:bg-primary/90 font-semibold"
+                >
+                  Login with selected demo
+                  <ChevronDown className="w-4 h-4 ml-2 rotate-[-90deg]" />
+                </Button>
+              </div>
+            </div>
+
+            <form onSubmit={form.handleSubmit(onSubmit)} className="mt-6 space-y-4">
               <div>
-                <Label htmlFor="email" className="text-xs font-semibold text-foreground mb-1.5 block">Email address</Label>
+                <Label htmlFor="email" className="text-xs font-semibold text-foreground mb-1.5 block">
+                  Email address
+                </Label>
                 <div className="relative group">
                   <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                   <Input
@@ -185,7 +312,7 @@ export default function Login() {
                   />
                 </div>
                 {form.formState.errors.email && (
-                  <p className="text-xs text-destructive mt-1.5 flex items-center gap-1">
+                  <p className="text-xs text-destructive mt-1.5">
                     {form.formState.errors.email.message}
                   </p>
                 )}
@@ -193,7 +320,9 @@ export default function Login() {
 
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <Label htmlFor="password" className="text-xs font-semibold text-foreground">Password</Label>
+                  <Label htmlFor="password" className="text-xs font-semibold text-foreground">
+                    Password
+                  </Label>
                   <Link to="/forgot-password" className="text-xs text-primary font-semibold hover:underline">
                     Forgot password?
                   </Link>
@@ -217,7 +346,9 @@ export default function Login() {
                   </button>
                 </div>
                 {form.formState.errors.password && (
-                  <p className="text-xs text-destructive mt-1.5">{form.formState.errors.password.message}</p>
+                  <p className="text-xs text-destructive mt-1.5">
+                    {form.formState.errors.password.message}
+                  </p>
                 )}
               </div>
 
@@ -227,9 +358,13 @@ export default function Login() {
                 className="w-full h-12 rounded-xl bg-gradient-to-r from-primary to-accent hover:opacity-90 text-primary-foreground shadow-lg shadow-primary/30 mt-6 font-semibold transition-all hover:shadow-xl hover:shadow-primary/40"
               >
                 {form.formState.isSubmitting ? (
-                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Signing in...</>
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Signing in...
+                  </>
                 ) : (
-                  <>Sign In <ArrowRight className="w-4 h-4 ml-2" /></>
+                  <>
+                    Sign In <ArrowRight className="w-4 h-4 ml-2" />
+                  </>
                 )}
               </Button>
             </form>
